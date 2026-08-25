@@ -6,7 +6,7 @@ export default function App() {
           Plataforma Beta QR
         </h1>
         <p className="text-sm text-slate-600 mb-4">
-          Plataforma de gestión sobre el uso de Impresoras 3D.
+          Plataforma web responsive Mobile-First y PWA para la gestión, registro de uso mediante códigos QR y monitoreo en tiempo real del laboratorio de prototipado 3D.
         </p>
         <button className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl transition-colors">
           Iniciar Impresión
