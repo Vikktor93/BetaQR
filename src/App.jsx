@@ -1,17 +1,26 @@
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import StudentScanView from './pages/StudentScanView';
+import AdminDashboard from './pages/AdminDashboard';
+import AdminLogin from './pages/AdminLogin';
+import NotFound from './pages/NotFound';
+
 export default function App() {
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center p-4 bg-slate-50 text-slate-800">
-      <div className="w-full max-w-md p-6 bg-white rounded-2xl shadow-sm border border-slate-200 text-center">
-        <h1 className="text-2xl font-bold text-slate-900 mb-2">
-          Plataforma Beta QR
-        </h1>
-        <p className="text-sm text-slate-600 mb-4">
-          Plataforma web responsive Mobile-First y PWA para la gestión, registro de uso mediante códigos QR y monitoreo en tiempo real del laboratorio de prototipado 3D.
-        </p>
-        <button className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl transition-colors">
-          Iniciar Impresión
-        </button>
-      </div>
-    </main>
+    <BrowserRouter>
+      <Routes>
+        {/* Redirección por defecto al Dashboard si se accede a la raíz */}
+        <Route path="/" element={<Navigate to="/admin" replace />} />
+
+        {/* Flujo Mobile-First del Estudiante vía QR */}
+        <Route path="/impresora/:printerId" element={<StudentScanView />} />
+
+        {/* Flujo del Administrador / Encargado */}
+        <Route path="/login" element={<AdminLogin />} />
+        <Route path="/admin" element={<AdminDashboard />} />
+
+        {/* Manejo de rutas inexistentes (404) */}
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </BrowserRouter>
   );
 }
