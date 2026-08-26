@@ -133,14 +133,14 @@ BetaQR/
 
 ## 🗄️ Modelo de Datos (Firebase Firestore)
 
-### Colección: `printers` (Documentos por máquina física)
+### Colección: `printers` (Documentos por cada Impresora 3D)
 Identificador de documento: `printer_01`, `printer_02`, etc.
 ```json
 {
   "id": "printer_01",
-  "name": "Ender 3 V2 - Sala A",
-  "model": "Creality Ender 3 V2",
-  "status": "BUSY", // "AVAILABLE" | "BUSY" | "MAINTENANCE"
+  "name": "Bambu Lab A1 Mini #01",
+  "model": "Bambu Lab A1 Mini",
+  "status": "Disponible", // "Disponible" | "Ocupado" | "Mantención"
   "securityToken": "a8f9e2b1c4", // Token validado contra el QR
   "currentSession": {
     "sessionId": "sess_20260811_001",
@@ -157,15 +157,15 @@ Identificador de documento: Auto-generado por Firestore.
 ```json
 {
   "printerId": "printer_01",
-  "printerName": "Ender 3 V2 - Sala A",
+  "printerName": "Bambu Lab A1 Mini #01",
   "studentName": "Juan Pérez",
   "career": "Ingeniería Civil en Informática",
   "startTime": "2026-08-11T10:30:00Z",
   "endTime": "2026-08-11T12:15:30Z",
   "totalDurationMinutes": 105.5,
   "formattedDuration": "01:45:30",
-  "status": "COMPLETED", // "COMPLETED" | "FORCE_STOPPED"
-  "stoppedBy": "STUDENT", // "STUDENT" | "ADMIN"
+  "status": "FINALIZADO", // "FINALIZADO" | "LIBERACION_FORZADA"
+  "stoppedBy": "ESTUDIANTE", // "ESTUDIANTE" | "ADMINISTRADOR"
   "createdAt": "2026-08-11T12:15:30Z"
 }
 ```
@@ -303,11 +303,11 @@ firebase deploy
 
 | Código | Tipo | Nombre | Estado |
 |---|---|---|---|
-| **RF01** | Funcional | Escaneo Único por Impresora (QR por máquina) | ❌ Pendiente |
-| **RF02** | Funcional | Registro Mínimo de Usuario (Nombre + Desplegable Carrera) | ❌ Pendiente |
-| **RF03** | Funcional | Captura Automática de Timestamp de Inicio | ❌ Pendiente |
-| **RF04** | Funcional | Botón de Término "STOP" y Cronómetro en Vivo | ❌ Pendiente |
-| **RF05** | Funcional | Cierre y Registro de Fin con Cálculo de Duración | ❌ Pendiente |
+| **RF01** | Funcional | Escaneo Único por Impresora (QR por máquina) | ✅ Implementado |
+| **RF02** | Funcional | Registro Mínimo de Usuario (Nombre + Desplegable Carrera) | ✅ Implementado |
+| **RF03** | Funcional | Captura Automática de Timestamp de Inicio | ✅ Implementado |
+| **RF04** | Funcional | Botón de Término "STOP" y Cronómetro en Vivo | ✅ Implementado |
+| **RF05** | Funcional | Cierre y Registro de Fin con Cálculo de Duración | ⏳ En Curso |
 | **RF06** | Funcional | Dashboard Web de Estado en Vivo (Cards Verde/Rojo) | ❌ Pendiente |
 | **RF07** | Funcional | Visualización de Uso en Tiempo Real (Datos + Tiempo HH:MM:SS) | ❌ Pendiente |
 | **RF08** | Funcional | Histórico y Exportación Consolidada a Excel/CSV | ❌ Pendiente |
