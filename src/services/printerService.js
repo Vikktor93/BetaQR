@@ -55,16 +55,41 @@ export const startPrintSession = async (printer, studentName, career) => {
   return sessionRef.id;
 };
 
+// Operación matemática: convierte segundos a formato "HH:MM:SS"
+const formatDuration = (totalSeconds) => {
+  const hours = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
+  const minutes = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
+  const seconds = String(totalSeconds % 60).padStart(2, '0');
+  return `${hours}:${minutes}:${seconds}`;
+};
+
 // Detiene sesión: libera la impresora y finaliza el registro histórico
 export const stopPrintSession = async (printer, detenidoPor = 'ESTUDIANTE') => {
   const printerRef = doc(db, 'printers', printer.id);
   const currentSession = printer.currentSession;
 
+  let durationSeconds = 0;
+  let durationFormatted = '00:00:00';
+
   // Si existe una sesión activa vinculada, se cierra
   if (currentSession?.sessionId) {
     const sessionDocRef = doc(db, 'print_sessions', currentSession.sessionId);
+
+    // Operación matemática: calcula cuánto duró la impresión
+    const startDate = currentSession.startTime ? new Date(currentSession.startTime) : null;
+    const endDate = new Date();
+
+    if (startDate && !isNaN(startDate.getTime())) {
+      durationSeconds = Math.max(0, Math.floor((endDate.getTime() - startDate.getTime()) / 1000));
+      durationFormatted = formatDuration(durationSeconds);
+    }
+
+    // Consulta: guarda el cálculo de tiempo (hora/minutos/segundos) en print_sessions,
+    // para que solo se consulte y se vea en el panel de admin
     await setDoc(sessionDocRef, {
       endTime: serverTimestamp(),
+      durationSeconds,
+      durationFormatted,
       status: detenidoPor === 'ADMINISTRADOR' ? 'LIBERACION_FORZADA' : 'FINALIZADO',
       stoppedBy: detenidoPor
     }, { merge: true });
