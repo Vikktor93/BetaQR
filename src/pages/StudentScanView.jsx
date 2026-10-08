@@ -34,13 +34,14 @@ export default function StudentScanView() {
     return () => unsubscribe();
   }, [printerId]);
 
-  // Cronómetro en vivo cuando el estado es "Ocupado"
+  // Cronómetro en vivo compatible con Timestamp de Firestore y Date strings
   useEffect(() => {
     let interval = null;
     if (printer?.status === 'Ocupado' && printer.currentSession?.startTime) {
       interval = setInterval(() => {
-        const start = new Date(printer.currentSession.startTime).getTime();
-        const now = new Date().getTime();
+        const rawStart = printer.currentSession.startTime;
+        const start = rawStart?.toDate ? rawStart.toDate().getTime() : new Date(rawStart).getTime();
+        const now = Date.now();
         const diff = Math.max(0, Math.floor((now - start) / 1000));
 
         const hours = String(Math.floor(diff / 3600)).padStart(2, '0');
