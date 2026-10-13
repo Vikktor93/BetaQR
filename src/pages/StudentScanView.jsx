@@ -30,15 +30,27 @@ export default function StudentScanView() {
     const unsubscribe = subscribeToPrinter(printerId, (data) => {
       setPrinter(data);
       setLoading(false);
+
+      // Si el Admin o el sistema finalizan la sesión, reseteamos el estado local de golpe
+      if (!data?.currentSession || data?.status === 'Disponible') {
+        setElapsedTime('00:00:00');
+        setStudentName('');
+      }
     });
     return () => unsubscribe();
   }, [printerId]);
 
+  // Determinar si la impresora tiene sesión activa (soporta tanto 'Ocupado' como 'Impresión en curso')
+  const isPrinting = Boolean(
+    printer?.currentSession && 
+    (printer?.status === 'Ocupado' || printer?.status === 'Impresión en curso' || printer?.status === 'En uso')
+  );
+
   // Cronómetro en vivo compatible con Timestamp de Firestore y Date strings
   useEffect(() => {
     let interval = null;
-    if (printer?.status === 'Ocupado' && printer.currentSession?.startTime) {
-      interval = setInterval(() => {
+    if (isPrinting && printer?.currentSession?.startTime) {
+      const calculateTime = () => {
         const rawStart = printer.currentSession.startTime;
         const start = rawStart?.toDate ? rawStart.toDate().getTime() : new Date(rawStart).getTime();
         const now = Date.now();
@@ -48,10 +60,15 @@ export default function StudentScanView() {
         const minutes = String(Math.floor((diff % 3600) / 60)).padStart(2, '0');
         const seconds = String(diff % 60).padStart(2, '0');
         setElapsedTime(`${hours}:${minutes}:${seconds}`);
-      }, 1000);
+      };
+
+      calculateTime(); // Ejecutar inmediatamente al montar
+      interval = setInterval(calculateTime, 1000);
+    } else {
+      setElapsedTime('00:00:00');
     }
     return () => clearInterval(interval);
-  }, [printer]);
+  }, [isPrinting, printer?.currentSession?.startTime]);
 
   // Pantalla de Carga
   if (loading) {
@@ -136,8 +153,8 @@ export default function StudentScanView() {
         <p className="text-xs text-slate-500 font-medium">{printer.model}</p>
       </header>
 
-      {/* Caso 1: Impresora Disponible */}
-      {printer.status === 'Disponible' && (
+      {/* Caso 1: Impresora Disponible (Sin sesión activa) */}
+      {!isPrinting && printer.status !== 'No Disponible' && printer.status !== 'No disponible' && (
         <form onSubmit={handleStart} className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4 my-auto">
           <div className="flex items-center gap-2 text-emerald-600 text-xs font-semibold uppercase tracking-wider">
             <CheckCircle className="w-4 h-4" /> Disponible para imprimir
@@ -190,7 +207,7 @@ export default function StudentScanView() {
       )}
 
       {/* Caso 2: Impresora Ocupada (Sesión Activa) */}
-      {printer.status === 'Ocupado' && (
+      {isPrinting && (
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 text-center space-y-6 my-auto">
           <div className="inline-flex items-center gap-2 px-3 py-1 bg-amber-50 text-amber-700 rounded-full text-xs font-semibold border border-amber-200">
             <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
@@ -229,7 +246,7 @@ export default function StudentScanView() {
       )}
 
       {/* Caso 3: Impresora No Disponible / Mantención */}
-      {printer.status === 'No Disponible' && (
+      {(printer.status === 'No Disponible' || printer.status === 'No disponible') && (
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 text-center space-y-3 my-auto">
           <XCircle className="w-12 h-12 text-slate-400 mx-auto" />
           <h2 className="text-base font-bold text-slate-800">Equipo Fuera de Servicio</h2>

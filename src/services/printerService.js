@@ -2,21 +2,26 @@ import { db } from '../config/firebase';
 import { 
   doc, 
   setDoc, 
+  updateDoc,
+  deleteDoc,
+  getDoc, 
   addDoc, 
   collection, 
   serverTimestamp, 
   onSnapshot,
-  Timestamp
+  Timestamp,
+  deleteField
 } from 'firebase/firestore';
 
 // Escucha cambios de la impresora en tiempo real
 export const subscribeToPrinter = (printerId, callback) => {
+  if (!printerId) return () => {};
   const printerRef = doc(db, 'printers', printerId);
   return onSnapshot(
     printerRef,
     (snapshot) => {
       if (snapshot.exists()) {
-        callback({ ...snapshot.data(), id: snapshot.id });
+        callback({ ...snapshot.data(), id: snapshot.id, docId: snapshot.id });
       } else {
         callback(null);
       }
@@ -38,13 +43,13 @@ const formatDuration = (totalSeconds) => {
 
 // Inicia sesión: crea registro en print_sessions y actualiza la impresora
 export const startPrintSession = async (printer, studentName, career) => {
-  const printerRef = doc(db, 'printers', printer.id);
+  const targetId = printer?.docId || printer?.id || (typeof printer === 'string' ? printer : 'printer_01');
+  const printerRef = doc(db, 'printers', targetId);
   const nowTimestamp = Timestamp.now();
 
-  // Crea el documento histórico en 'print_sessions'
   const sessionRef = await addDoc(collection(db, 'print_sessions'), {
-    printerId: printer.id,
-    printerName: printer.name || 'Impresora 3D',
+    printerId: targetId,
+    printerName: printer?.name || 'Impresora 3D',
     studentName,
     career,
     startTime: serverTimestamp(),
@@ -53,7 +58,6 @@ export const startPrintSession = async (printer, studentName, career) => {
     stoppedBy: null,
   });
 
-  // Actualiza la impresora a 'Ocupado'
   await setDoc(
     printerRef,
     {
@@ -74,55 +78,96 @@ export const startPrintSession = async (printer, studentName, career) => {
 
 // Detiene sesión: libera la impresora y finaliza el registro histórico
 export const stopPrintSession = async (printer, detenidoPor = 'ESTUDIANTE') => {
-  const printerRef = doc(db, 'printers', printer.id);
-  const currentSession = printer.currentSession;
+  const targetId = printer?.docId || printer?.id || (typeof printer === 'string' ? printer : 'printer_01');
+  const printerRef = doc(db, 'printers', targetId);
+
+  let sessionData = printer?.currentSession;
+  if (!sessionData) {
+    try {
+      const snap = await getDoc(printerRef);
+      if (snap.exists()) {
+        sessionData = snap.data().currentSession;
+      }
+    } catch (readErr) {
+      console.warn("[printerService] Error al leer antes de detener:", readErr);
+    }
+  }
 
   let durationSeconds = 0;
   let durationFormatted = '00:00:00';
 
-  if (currentSession?.sessionId) {
-    const sessionDocRef = doc(db, 'print_sessions', currentSession.sessionId);
+  console.log(`[printerService] Deteniendo sesión para impresora ${targetId} por ${detenidoPor}`);
 
-    // Soporta tanto Timestamp de Firestore como strings ISO o ms
-    let startDate = null;
-    if (currentSession.startTime?.toDate) {
-      startDate = currentSession.startTime.toDate();
-    } else if (currentSession.startTime) {
-      startDate = new Date(currentSession.startTime);
+  if (sessionData?.sessionId) {
+    try {
+      const sessionDocRef = doc(db, 'print_sessions', sessionData.sessionId);
+
+      let startDate = null;
+      if (sessionData.startTime?.toDate) {
+        startDate = sessionData.startTime.toDate();
+      } else if (sessionData.startTime?.seconds) {
+        startDate = new Date(sessionData.startTime.seconds * 1000);
+      } else if (sessionData.startTime) {
+        startDate = new Date(sessionData.startTime);
+      }
+
+      const endDate = new Date();
+
+      if (startDate && !isNaN(startDate.getTime())) {
+        durationSeconds = Math.max(0, Math.floor((endDate.getTime() - startDate.getTime()) / 1000));
+        durationFormatted = formatDuration(durationSeconds);
+      }
+
+      await setDoc(
+        sessionDocRef,
+        {
+          endTime: serverTimestamp(),
+          durationSeconds,
+          durationFormatted,
+          status: detenidoPor === 'ADMINISTRADOR' ? 'LIBERACION_FORZADA' : 'FINALIZADO',
+          stoppedBy: detenidoPor
+        },
+        { merge: true }
+      );
+    } catch (sessionErr) {
+      console.warn("[printerService] Error al actualizar histórico:", sessionErr);
     }
+  }
 
-    const endDate = new Date();
-
-    if (startDate && !isNaN(startDate.getTime())) {
-      durationSeconds = Math.max(0, Math.floor((endDate.getTime() - startDate.getTime()) / 1000));
-      durationFormatted = formatDuration(durationSeconds);
-    }
-
-    // Actualiza el histórico
+  try {
+    await updateDoc(printerRef, {
+      status: 'Disponible',
+      currentSession: deleteField(),
+      updatedAt: serverTimestamp()
+    });
+  } catch (updateErr) {
+    console.warn("[printerService] Fallback a setDoc:", updateErr);
     await setDoc(
-      sessionDocRef,
+      printerRef,
       {
-        endTime: serverTimestamp(),
-        durationSeconds,
-        durationFormatted,
-        status: detenidoPor === 'ADMINISTRADOR' ? 'LIBERACION_FORZADA' : 'FINALIZADO',
-        stoppedBy: detenidoPor
+        status: 'Disponible',
+        currentSession: null,
+        updatedAt: serverTimestamp()
       },
       { merge: true }
     );
   }
 
-  // Libera la impresora
-  await setDoc(
-    printerRef,
-    {
-      status: 'Disponible',
-      currentSession: null,
-      updatedAt: serverTimestamp()
-    },
-    { merge: true }
-  );
-
-  // Retorna el cálculo para feedback inmediato en UI
+  console.log(`[printerService] Impresora ${targetId} liberada exitosamente.`);
   return { durationSeconds, durationFormatted };
+};
+
+// Actualiza los datos editables de la impresora (Nombre, Modelo, Estado manual)
+export const updatePrinter = async (printerId, updatedData) => {
+  const printerRef = doc(db, 'printers', printerId);
+  await updateDoc(printerRef, {
+    ...updatedData,
+    updatedAt: serverTimestamp()
+  });
+};
+
+// Elimina el equipo de Firestore
+export const deletePrinter = async (printerId) => {
+  const printerRef = doc(db, 'printers', printerId);
+  await deleteDoc(printerRef);
 };

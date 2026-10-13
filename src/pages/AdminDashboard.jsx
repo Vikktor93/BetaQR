@@ -3,7 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { usePrinters } from '../hooks/usePrinters';
 import { useAuth } from '../context/AuthContext';
 import PrinterCard from '../components/admin/PrinterCard';
-import { stopPrintSession } from '../services/printerService';
+import ConfirmModal from '../components/admin/ConfirmModal';
+import EditPrinterModal from '../components/admin/EditPrinterModal';
+import { stopPrintSession, updatePrinter, deletePrinter } from '../services/printerService';
 import { LayoutGrid, Loader2, AlertTriangle, LogOut } from 'lucide-react';
 
 export default function AdminDashboard() {
@@ -14,8 +16,24 @@ export default function AdminDashboard() {
   const [expandedId, setExpandedId] = useState(null);
   const [forcingId, setForcingId] = useState(null);
 
+  // Estados de modales
+  const [confirmModalState, setConfirmModalState] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    confirmText: 'Confirmar',
+    variant: 'danger',
+    action: null,
+  });
+
+  const [editModalState, setEditModalState] = useState({
+    isOpen: false,
+    printer: null,
+  });
+  const [isUpdating, setIsUpdating] = useState(false);
+
   const disponibles = printers.filter((p) => p.status === 'Disponible').length;
-  const ocupadas = printers.filter((p) => p.status === 'Ocupado').length;
+  const ocupadas = printers.filter((p) => p.status === 'Ocupado' || p.status === 'Impresión en curso').length;
 
   const handleToggle = (id) => {
     setExpandedId((current) => (current === id ? null : id));
@@ -30,20 +48,69 @@ export default function AdminDashboard() {
     }
   };
 
-  // Liberación forzada por el administrador
-  const handleForceStop = async (printer) => {
-    const confirmMsg = `¿Forzar la liberación de "${printer.name}"? Esto finalizará la sesión activa del estudiante.`;
-    if (!confirm(confirmMsg)) return;
+  // 1. Finalizar impresión con ConfirmModal
+  const handleForceStopClick = (printer) => {
+    setConfirmModalState({
+      isOpen: true,
+      title: '¿Finalizar Impresión?',
+      message: `Esto detendrá la sesión de "${printer.name}" y liberará el equipo para otros estudiantes.`,
+      confirmText: 'Finalizar Sesión',
+      variant: 'warning',
+      action: async () => {
+        const printerId = printer.docId || printer.id;
+        setForcingId(printerId);
+        try {
+          await stopPrintSession(printer, 'ADMINISTRADOR');
+        } catch (err) {
+          console.error(err);
+        } finally {
+          setForcingId(null);
+          setConfirmModalState((prev) => ({ ...prev, isOpen: false }));
+        }
+      },
+    });
+  };
 
-    setForcingId(printer.id);
+  // 2. Eliminar impresora con ConfirmModal
+  const handleDeleteClick = (printer) => {
+    setConfirmModalState({
+      isOpen: true,
+      title: '¿Eliminar Impresora?',
+      message: `¿Estás seguro de que deseas eliminar "${printer.name}"? Esta acción removerá el equipo permanentemente.`,
+      confirmText: 'Eliminar Equipo',
+      variant: 'danger',
+      action: async () => {
+        const printerId = printer.docId || printer.id;
+        try {
+          await deletePrinter(printerId);
+        } catch (err) {
+          console.error('Error al eliminar impresora:', err);
+        } finally {
+          setConfirmModalState((prev) => ({ ...prev, isOpen: false }));
+        }
+      },
+    });
+  };
+
+  // 3. Abrir modal de edición
+  const handleEditClick = (printer) => {
+    setEditModalState({
+      isOpen: true,
+      printer,
+    });
+  };
+
+  // 4. Guardar cambios de edición
+  const handleSaveEdit = async (updatedData) => {
+    const printerId = editModalState.printer.docId || editModalState.printer.id;
+    setIsUpdating(true);
     try {
-      const { durationFormatted } = await stopPrintSession(printer, 'ADMINISTRADOR');
-      alert(`Impresora liberada. Tiempo total de uso: ${durationFormatted}`);
+      await updatePrinter(printerId, updatedData);
+      setEditModalState({ isOpen: false, printer: null });
     } catch (err) {
-      console.error(err);
-      alert('Error al forzar la liberación de la impresora.');
+      console.error('Error al actualizar impresora:', err);
     } finally {
-      setForcingId(null);
+      setIsUpdating(false);
     }
   };
 
@@ -59,7 +126,7 @@ export default function AdminDashboard() {
   if (error) {
     return (
       <main className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
-        <div className="bg-white p-6 rounded-2xl shadow-sm max-w-sm w-full text-center border border-red-100">
+        <div className="bg-white p-6 rounded-2xl shadow-xs max-w-sm w-full text-center border border-red-100">
           <AlertTriangle className="w-12 h-12 text-red-500 mx-auto mb-3" />
           <h2 className="text-lg font-bold text-slate-800">Error al cargar el dashboard</h2>
           <p className="text-sm text-slate-600 mt-1">
@@ -88,7 +155,7 @@ export default function AdminDashboard() {
 
           <button
             onClick={handleLogout}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-slate-200"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-slate-200 cursor-pointer"
             title="Cerrar sesión"
           >
             <LogOut className="w-4 h-4" />
@@ -109,23 +176,47 @@ export default function AdminDashboard() {
       </header>
 
       {printers.length === 0 ? (
-        <div className="max-w-2xl mx-auto bg-white p-6 rounded-2xl shadow-sm border border-slate-200 text-center text-sm text-slate-500">
+        <div className="max-w-2xl mx-auto bg-white p-6 rounded-2xl shadow-xs border border-slate-200 text-center text-sm text-slate-500">
           Aún no hay impresoras registradas en el laboratorio.
         </div>
       ) : (
         <div className="max-w-2xl mx-auto flex flex-col gap-3">
-          {printers.map((printer) => (
-            <PrinterCard
-              key={printer.id}
-              printer={printer}
-              isExpanded={expandedId === printer.id}
-              onToggle={() => handleToggle(printer.id)}
-              onForceStop={() => handleForceStop(printer)}
-              isForcing={forcingId === printer.id}
-            />
-          ))}
+          {printers.map((printer) => {
+            const pId = printer.docId || printer.id;
+            return (
+              <PrinterCard
+                key={pId}
+                printer={printer}
+                isExpanded={expandedId === pId}
+                onToggle={() => handleToggle(pId)}
+                onForceStop={handleForceStopClick}
+                onEdit={handleEditClick}
+                onDelete={handleDeleteClick}
+                isForcing={forcingId === pId}
+              />
+            );
+          })}
         </div>
       )}
+
+      {/* Modales */}
+      <ConfirmModal
+        isOpen={confirmModalState.isOpen}
+        title={confirmModalState.title}
+        message={confirmModalState.message}
+        confirmText={confirmModalState.confirmText}
+        variant={confirmModalState.variant}
+        onConfirm={confirmModalState.action}
+        onCancel={() => setConfirmModalState((prev) => ({ ...prev, isOpen: false }))}
+      />
+
+      <EditPrinterModal
+        isOpen={editModalState.isOpen}
+        printer={editModalState.printer}
+        onClose={() => setEditModalState({ isOpen: false, printer: null })}
+        onSave={handleSaveEdit}
+        isLoading={isUpdating}
+      />
     </main>
   );
 }

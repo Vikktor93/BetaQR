@@ -15,8 +15,9 @@ export function usePrinters() {
         q,
         (snapshot) => {
           const printerList = snapshot.docs.map((doc) => ({
-            id: doc.id,
             ...doc.data(),
+            id: doc.id,
+            docId: doc.id,
           }));
           setPrinters(printerList);
           setLoading(false);
