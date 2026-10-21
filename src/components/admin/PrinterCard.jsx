@@ -2,6 +2,38 @@ import React from 'react';
 import { ChevronDown, ChevronUp, Clock, AlertOctagon, Trash2, Edit3 } from 'lucide-react';
 import { useLiveTimer } from '../../hooks/useLiveTimer';
 
+// Estilos por estado:
+// Disponible = verde · En uso = ámbar · No disponible = rojo
+const STATUS_STYLES = {
+  available: {
+    dot: 'bg-emerald-500',
+    badge: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    accent: 'border-l-emerald-500',
+    label: 'Disponible para uso',
+  },
+  inUse: {
+    dot: 'bg-amber-500 animate-pulse',
+    badge: 'bg-amber-50 text-amber-700 border-amber-200',
+    accent: 'border-l-amber-500',
+    label: 'Impresión en curso',
+  },
+  unavailable: {
+    dot: 'bg-rose-500',
+    badge: 'bg-rose-50 text-rose-700 border-rose-200',
+    accent: 'border-l-rose-500',
+    label: 'No disponible',
+  },
+};
+
+// startTime se guarda como string ISO al iniciar la sesión (ver startPrintSession),
+// pero por si en algún momento llega como Timestamp de Firestore, se soportan ambos.
+const getStartDate = (startTime) => {
+  if (!startTime) return null;
+  if (typeof startTime.toDate === 'function') return startTime.toDate();
+  const date = new Date(startTime);
+  return isNaN(date.getTime()) ? null : date;
+};
+
 export default function PrinterCard({
   printer,
   isExpanded,
@@ -11,27 +43,28 @@ export default function PrinterCard({
   onDelete,
   isForcing,
 }) {
-  const isAvailable = printer.status === 'Disponible';
-  const isNoDisponible = printer.status === 'No disponible' || printer.status === 'No Disponible';
+  const normalizedStatus = (printer.status || '').toLowerCase();
+  const isAvailable = normalizedStatus === 'disponible';
+  const isNoDisponible = normalizedStatus === 'no disponible';
+
+  // Cualquier estado que no sea "Disponible" ni "No disponible" se trata como "en uso"
+  const stateKey = isAvailable ? 'available' : isNoDisponible ? 'unavailable' : 'inUse';
+  const styles = STATUS_STYLES[stateKey];
+
   const elapsed = useLiveTimer(printer.currentSession?.startTime);
+  const startDate = getStartDate(printer.currentSession?.startTime);
 
   return (
-    <div className="bg-white rounded-2xl shadow-xs border border-slate-200/80 mb-3 overflow-hidden transition-all">
+    <div
+      className={`bg-white rounded-2xl shadow-xs border border-slate-200/80 border-l-4 ${styles.accent} mb-3 overflow-hidden transition-all hover:shadow-md`}
+    >
       {/* Cabecera / Fila Principal */}
       <div
         className="p-4 sm:px-6 flex items-center justify-between cursor-pointer hover:bg-slate-50/60 transition-colors"
         onClick={onToggle}
       >
         <div className="flex items-center gap-3">
-          <span
-            className={`w-2.5 h-2.5 rounded-full ${
-              isAvailable 
-                ? 'bg-emerald-500' 
-                : isNoDisponible 
-                ? 'bg-amber-500' 
-                : 'bg-rose-500 animate-pulse'
-            }`}
-          />
+          <span className={`w-2.5 h-2.5 rounded-full ${styles.dot}`} />
           <div>
             <h3 className="font-semibold text-slate-900 text-sm md:text-base">
               {printer.name}
@@ -41,20 +74,8 @@ export default function PrinterCard({
         </div>
 
         <div className="flex items-center gap-3">
-          <span
-            className={`text-xs font-semibold px-3 py-1 rounded-full ${
-              isAvailable
-                ? 'bg-emerald-50 text-emerald-600 border border-emerald-200'
-                : isNoDisponible
-                ? 'bg-amber-50 text-amber-600 border border-amber-200'
-                : 'bg-rose-50 text-rose-600 border border-rose-200'
-            }`}
-          >
-            {isAvailable 
-              ? 'Disponible para uso' 
-              : isNoDisponible 
-              ? 'No disponible' 
-              : 'Impresión en curso'}
+          <span className={`text-xs font-semibold px-3 py-1 rounded-full border ${styles.badge}`}>
+            {styles.label}
           </span>
           {isExpanded ? (
             <ChevronUp className="w-4 h-4 text-slate-400" />
@@ -68,7 +89,7 @@ export default function PrinterCard({
       {isExpanded && (
         <div className="px-6 py-5 border-t border-slate-100 bg-white">
           <div className="flex items-center justify-between gap-6">
-            
+
             {/* Contenido Central */}
             <div className="flex-1">
               {!isAvailable && !isNoDisponible && printer.currentSession ? (
@@ -87,10 +108,11 @@ export default function PrinterCard({
 
                     <span className="text-slate-400 font-medium">Inicio:</span>
                     <span className="font-semibold text-slate-800">
-                      {printer.currentSession.startTime?.toDate
-                        ? printer.currentSession.startTime
-                            .toDate()
-                            .toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                      {startDate
+                        ? startDate.toLocaleTimeString('es-CL', {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })
                         : '--:--'}
                     </span>
                   </div>
@@ -118,9 +140,9 @@ export default function PrinterCard({
                   </div>
                 </div>
               ) : isNoDisponible ? (
-                /* Caso: En Mantenimiento */
+                /* Caso: En Mantenimiento / fuera de servicio */
                 <div className="py-2">
-                  <p className="text-xs text-amber-600 font-medium">
+                  <p className="text-xs text-rose-600 font-medium">
                     Equipo en mantenimiento o fuera de servicio.
                   </p>
                 </div>

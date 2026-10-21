@@ -32,8 +32,34 @@ export default function AdminDashboard() {
   });
   const [isUpdating, setIsUpdating] = useState(false);
 
-  const disponibles = printers.filter((p) => p.status === 'Disponible').length;
-  const ocupadas = printers.filter((p) => p.status === 'Ocupado' || p.status === 'Impresión en curso').length;
+  // Contadores del resumen. Misma lógica que usa PrinterCard para pintar cada tarjeta:
+  // lo que no es "Disponible" ni "No disponible" cuenta como "en uso".
+  const normalize = (status) => (status || '').toLowerCase();
+  const disponibles = printers.filter((p) => normalize(p.status) === 'disponible').length;
+  const noDisponibles = printers.filter((p) => normalize(p.status) === 'no disponible').length;
+  const ocupadas = printers.length - disponibles - noDisponibles;
+
+  // Disponible = verde · En uso = ámbar · No disponible = rojo
+  const summaryChips = [
+    {
+      label: 'disponibles',
+      count: disponibles,
+      dot: 'bg-emerald-500',
+      style: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    },
+    {
+      label: 'en uso',
+      count: ocupadas,
+      dot: 'bg-amber-500',
+      style: 'bg-amber-50 text-amber-700 border-amber-200',
+    },
+    {
+      label: 'no disponibles',
+      count: noDisponibles,
+      dot: 'bg-rose-500',
+      style: 'bg-rose-50 text-rose-700 border-rose-200',
+    },
+  ];
 
   const handleToggle = (id) => {
     setExpandedId((current) => (current === id ? null : id));
@@ -140,38 +166,41 @@ export default function AdminDashboard() {
   return (
     <main className="min-h-screen bg-slate-50 p-4 md:p-8">
       <header className="max-w-2xl mx-auto mb-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-blue-50 text-blue-600 rounded-xl">
-              <LayoutGrid className="w-6 h-6" />
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-4 sm:p-5">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 bg-blue-50 text-blue-600 rounded-xl">
+                <LayoutGrid className="w-6 h-6" />
+              </div>
+              <div>
+                <h1 className="text-xl font-bold text-slate-900">Dashboard de Impresoras</h1>
+                <p className="text-xs text-slate-500">
+                  Laboratorio de Prototipado 3D (Lab 303) · Estado en vivo
+                </p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-xl font-bold text-slate-900">Dashboard de Impresoras</h1>
-              <p className="text-xs text-slate-500">
-                Laboratorio de Prototipado 3D (Lab 303) · Estado en vivo
-              </p>
-            </div>
+
+            <button
+              onClick={handleLogout}
+              className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 text-sm font-semibold text-white bg-slate-800 hover:bg-slate-900 active:scale-[0.98] rounded-xl shadow-sm transition-all cursor-pointer"
+              title="Cerrar sesión"
+            >
+              <LogOut className="w-4 h-4" />
+              <span className="hidden sm:inline">Cerrar Sesión</span>
+            </button>
           </div>
 
-          <button
-            onClick={handleLogout}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-slate-200 cursor-pointer"
-            title="Cerrar sesión"
-          >
-            <LogOut className="w-4 h-4" />
-            <span className="hidden sm:inline">Cerrar Sesión</span>
-          </button>
-        </div>
-
-        <div className="flex gap-3 mt-4">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-            {disponibles} disponibles
-          </span>
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
-            <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
-            {ocupadas} en uso
-          </span>
+          <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-slate-100">
+            {summaryChips.map((chip) => (
+              <span
+                key={chip.label}
+                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border ${chip.style}`}
+              >
+                <span className={`w-1.5 h-1.5 rounded-full ${chip.dot}`}></span>
+                {chip.count} {chip.label}
+              </span>
+            ))}
+          </div>
         </div>
       </header>
 
