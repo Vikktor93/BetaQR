@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { CAREERS } from '../config/careers';
 import { subscribeToPrinter, startPrintSession, stopPrintSession } from '../services/printerService';
+import { PRINTER_STATUS, STOPPED_BY, normalizePrinterStatus } from '../config/status';
 import { 
   Printer, 
   Play, 
@@ -32,7 +33,7 @@ export default function StudentScanView() {
       setLoading(false);
 
       // Si el Admin o el sistema finalizan la sesión, reseteamos el estado local de golpe
-      if (!data?.currentSession || data?.status === 'Disponible') {
+      if (!data?.currentSession || normalizePrinterStatus(data?.status) === PRINTER_STATUS.AVAILABLE) {
         setElapsedTime('00:00:00');
         setStudentName('');
       }
@@ -40,11 +41,12 @@ export default function StudentScanView() {
     return () => unsubscribe();
   }, [printerId]);
 
-  // Determinar si la impresora tiene sesión activa (soporta tanto 'Ocupado' como 'Impresión en curso')
-  const isPrinting = Boolean(
-    printer?.currentSession && 
-    (printer?.status === 'Ocupado' || printer?.status === 'Impresión en curso' || printer?.status === 'En uso')
-  );
+  // Estado oficial de la impresora (convierte valores antiguos guardados en Firestore)
+  const printerStatus = normalizePrinterStatus(printer?.status);
+  const isUnavailable = printerStatus === PRINTER_STATUS.UNAVAILABLE;
+
+  // La impresora tiene una sesión activa
+  const isPrinting = Boolean(printer?.currentSession && printerStatus === PRINTER_STATUS.BUSY);
 
   // Cronómetro en vivo compatible con Timestamp de Firestore y Date strings
   useEffect(() => {
@@ -132,7 +134,7 @@ export default function StudentScanView() {
 
     setSubmitting(true);
     try {
-      await stopPrintSession(printer, 'ESTUDIANTE');
+      await stopPrintSession(printer, STOPPED_BY.STUDENT);
       setStudentName('');
     } catch (err) {
       console.error(err);
@@ -154,7 +156,7 @@ export default function StudentScanView() {
       </header>
 
       {/* Caso 1: Impresora Disponible (Sin sesión activa) */}
-      {!isPrinting && printer.status !== 'No Disponible' && printer.status !== 'No disponible' && (
+      {!isPrinting && !isUnavailable && (
         <form onSubmit={handleStart} className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4 my-auto">
           <div className="flex items-center gap-2 text-emerald-600 text-xs font-semibold uppercase tracking-wider">
             <CheckCircle className="w-4 h-4" /> Disponible para imprimir
@@ -246,7 +248,7 @@ export default function StudentScanView() {
       )}
 
       {/* Caso 3: Impresora No Disponible / Mantención */}
-      {(printer.status === 'No Disponible' || printer.status === 'No disponible') && (
+      {isUnavailable && (
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 text-center space-y-3 my-auto">
           <XCircle className="w-12 h-12 text-slate-400 mx-auto" />
           <h2 className="text-base font-bold text-slate-800">Equipo Fuera de Servicio</h2>

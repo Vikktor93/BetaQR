@@ -15,7 +15,7 @@ Hoja de ruta del proyecto BetaQR: qué está terminado, qué sigue y en qué ord
 |---|---|---|---|
 | 0 | Base del proyecto y flujo del estudiante | 0.1.0 | ✅ |
 | 1 | Panel de administración en tiempo real | 0.2.0 | ✅ |
-| 2 | Estabilización y seguridad | 0.3.0 | ⬜ |
+| 2 | Estabilización y seguridad | 0.3.0 | 🔄 |
 | 3 | Historial, métricas y exportación (RF08) | 0.4.0 | ⬜ |
 | 4 | PWA y gestión de códigos QR | 0.5.0 | ⬜ |
 | 5 | Despliegue y piloto en el laboratorio | 0.9.0 | ⬜ |
@@ -44,14 +44,14 @@ Hoja de ruta del proyecto BetaQR: qué está terminado, qué sigue y en qué ord
 
 ---
 
-## ⬜ Fase 2 - Estabilización y Seguridad (v0.3.0)
+## 🔄 Fase 2 - Estabilización y Seguridad (v0.3.0)
 
 **Objetivo:** dejar una base sólida antes de agregar funciones nuevas.
 
 ### Calidad de código
 - [ ] Corregir los 8 errores de ESLint (`npm run lint`), principalmente `setState` dentro de `useEffect`
 - [ ] Reemplazar el cronómetro duplicado de `StudentScanView` por el hook `useLiveTimer`
-- [ ] Unificar los valores de `status` en un solo archivo de constantes (hoy conviven `"Ocupado"`, `"Impresión en curso"`, `"En uso"`, `"No disponible"` y `"No Disponible"`)
+- [x] Unificar los valores de `status` en un solo archivo de constantes (hoy conviven `"Ocupado"`, `"Impresión en curso"`, `"En uso"`, `"No disponible"` y `"No Disponible"`)
 - [ ] Eliminar archivos de plantilla que no se usan (`App.css`, `react.svg`, `vite.svg`, `hero.png`)
 
 ### Integridad de datos

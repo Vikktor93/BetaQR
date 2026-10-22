@@ -12,6 +12,7 @@ import {
   Timestamp,
   deleteField
 } from 'firebase/firestore';
+import { PRINTER_STATUS, SESSION_STATUS, STOPPED_BY } from '../config/status';
 
 // Escucha cambios de la impresora en tiempo real
 export const subscribeToPrinter = (printerId, callback) => {
@@ -54,14 +55,14 @@ export const startPrintSession = async (printer, studentName, career) => {
     career,
     startTime: serverTimestamp(),
     endTime: null,
-    status: 'EN_CURSO',
+    status: SESSION_STATUS.IN_PROGRESS,
     stoppedBy: null,
   });
 
   await setDoc(
     printerRef,
     {
-      status: 'Ocupado',
+      status: PRINTER_STATUS.BUSY,
       currentSession: {
         sessionId: sessionRef.id,
         studentName,
@@ -77,7 +78,7 @@ export const startPrintSession = async (printer, studentName, career) => {
 };
 
 // Detiene sesión: libera la impresora y finaliza el registro histórico
-export const stopPrintSession = async (printer, detenidoPor = 'ESTUDIANTE') => {
+export const stopPrintSession = async (printer, detenidoPor = STOPPED_BY.STUDENT) => {
   const targetId = printer?.docId || printer?.id || (typeof printer === 'string' ? printer : 'printer_01');
   const printerRef = doc(db, 'printers', targetId);
 
@@ -124,7 +125,7 @@ export const stopPrintSession = async (printer, detenidoPor = 'ESTUDIANTE') => {
           endTime: serverTimestamp(),
           durationSeconds,
           durationFormatted,
-          status: detenidoPor === 'ADMINISTRADOR' ? 'LIBERACION_FORZADA' : 'FINALIZADO',
+          status: detenidoPor === STOPPED_BY.ADMIN ? SESSION_STATUS.FORCED_RELEASE : SESSION_STATUS.FINISHED,
           stoppedBy: detenidoPor
         },
         { merge: true }
@@ -136,7 +137,7 @@ export const stopPrintSession = async (printer, detenidoPor = 'ESTUDIANTE') => {
 
   try {
     await updateDoc(printerRef, {
-      status: 'Disponible',
+      status: PRINTER_STATUS.AVAILABLE,
       currentSession: deleteField(),
       updatedAt: serverTimestamp()
     });
@@ -145,7 +146,7 @@ export const stopPrintSession = async (printer, detenidoPor = 'ESTUDIANTE') => {
     await setDoc(
       printerRef,
       {
-        status: 'Disponible',
+        status: PRINTER_STATUS.AVAILABLE,
         currentSession: null,
         updatedAt: serverTimestamp()
       },

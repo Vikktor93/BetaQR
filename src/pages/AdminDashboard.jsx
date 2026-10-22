@@ -6,6 +6,7 @@ import PrinterCard from '../components/admin/PrinterCard';
 import ConfirmModal from '../components/admin/ConfirmModal';
 import EditPrinterModal from '../components/admin/EditPrinterModal';
 import { stopPrintSession, updatePrinter, deletePrinter } from '../services/printerService';
+import { PRINTER_STATUS, STOPPED_BY, normalizePrinterStatus } from '../config/status';
 import { LayoutGrid, Loader2, AlertTriangle, LogOut } from 'lucide-react';
 
 export default function AdminDashboard() {
@@ -32,12 +33,12 @@ export default function AdminDashboard() {
   });
   const [isUpdating, setIsUpdating] = useState(false);
 
-  // Contadores del resumen. Misma lógica que usa PrinterCard para pintar cada tarjeta:
-  // lo que no es "Disponible" ni "No disponible" cuenta como "en uso".
-  const normalize = (status) => (status || '').toLowerCase();
-  const disponibles = printers.filter((p) => normalize(p.status) === 'disponible').length;
-  const noDisponibles = printers.filter((p) => normalize(p.status) === 'no disponible').length;
-  const ocupadas = printers.length - disponibles - noDisponibles;
+  // Contadores del resumen (misma normalización que usa PrinterCard)
+  const countByStatus = (status) =>
+    printers.filter((p) => normalizePrinterStatus(p.status) === status).length;
+  const disponibles = countByStatus(PRINTER_STATUS.AVAILABLE);
+  const ocupadas = countByStatus(PRINTER_STATUS.BUSY);
+  const noDisponibles = countByStatus(PRINTER_STATUS.UNAVAILABLE);
 
   // Disponible = verde · En uso = ámbar · No disponible = rojo
   const summaryChips = [
@@ -86,7 +87,7 @@ export default function AdminDashboard() {
         const printerId = printer.docId || printer.id;
         setForcingId(printerId);
         try {
-          await stopPrintSession(printer, 'ADMINISTRADOR');
+          await stopPrintSession(printer, STOPPED_BY.ADMIN);
         } catch (err) {
           console.error(err);
         } finally {

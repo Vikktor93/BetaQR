@@ -1,5 +1,6 @@
 ﻿import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
+import { PRINTER_STATUS, PRINTER_STATUS_LABELS, normalizePrinterStatus } from '../../config/status';
 
 const PRINTER_MODELS = [
   'Bambu Lab A1 Mini',
@@ -18,13 +19,13 @@ export default function EditPrinterModal({
 }) {
   const [name, setName] = useState('');
   const [model, setModel] = useState('');
-  const [status, setStatus] = useState('Disponible');
+  const [status, setStatus] = useState(PRINTER_STATUS.AVAILABLE);
 
   useEffect(() => {
     if (printer) {
       setName(printer.name || '');
       setModel(printer.model || PRINTER_MODELS[0]);
-      setStatus(printer.status || 'Disponible');
+      setStatus(normalizePrinterStatus(printer.status));
     }
   }, [printer]);
 
@@ -97,9 +98,11 @@ export default function EditPrinterModal({
               onChange={(e) => setStatus(e.target.value)}
               className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs md:text-sm text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all cursor-pointer"
             >
-              <option value="Disponible">Disponible para uso</option>
-              <option value="Ocupado">Impresión en curso</option>
-              <option value="No disponible">No disponible</option>
+              {Object.values(PRINTER_STATUS).map((value) => (
+                <option key={value} value={value}>
+                  {PRINTER_STATUS_LABELS[value]}
+                </option>
+              ))}
             </select>
           </div>
 

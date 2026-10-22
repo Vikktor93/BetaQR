@@ -1,27 +1,28 @@
 import React from 'react';
 import { ChevronDown, ChevronUp, Clock, AlertOctagon, Trash2, Edit3 } from 'lucide-react';
 import { useLiveTimer } from '../../hooks/useLiveTimer';
+import { PRINTER_STATUS, PRINTER_STATUS_LABELS, normalizePrinterStatus } from '../../config/status';
 
 // Estilos por estado:
 // Disponible = verde · En uso = ámbar · No disponible = rojo
 const STATUS_STYLES = {
-  available: {
+  [PRINTER_STATUS.AVAILABLE]: {
     dot: 'bg-emerald-500',
     badge: 'bg-emerald-50 text-emerald-700 border-emerald-200',
     accent: 'border-l-emerald-500',
-    label: 'Disponible para uso',
+    label: PRINTER_STATUS_LABELS[PRINTER_STATUS.AVAILABLE],
   },
-  inUse: {
+  [PRINTER_STATUS.BUSY]: {
     dot: 'bg-amber-500 animate-pulse',
     badge: 'bg-amber-50 text-amber-700 border-amber-200',
     accent: 'border-l-amber-500',
-    label: 'Impresión en curso',
+    label: PRINTER_STATUS_LABELS[PRINTER_STATUS.BUSY],
   },
-  unavailable: {
+  [PRINTER_STATUS.UNAVAILABLE]: {
     dot: 'bg-rose-500',
     badge: 'bg-rose-50 text-rose-700 border-rose-200',
     accent: 'border-l-rose-500',
-    label: 'No disponible',
+    label: PRINTER_STATUS_LABELS[PRINTER_STATUS.UNAVAILABLE],
   },
 };
 
@@ -43,13 +44,10 @@ export default function PrinterCard({
   onDelete,
   isForcing,
 }) {
-  const normalizedStatus = (printer.status || '').toLowerCase();
-  const isAvailable = normalizedStatus === 'disponible';
-  const isNoDisponible = normalizedStatus === 'no disponible';
-
-  // Cualquier estado que no sea "Disponible" ni "No disponible" se trata como "en uso"
-  const stateKey = isAvailable ? 'available' : isNoDisponible ? 'unavailable' : 'inUse';
-  const styles = STATUS_STYLES[stateKey];
+  const printerStatus = normalizePrinterStatus(printer.status);
+  const isAvailable = printerStatus === PRINTER_STATUS.AVAILABLE;
+  const isNoDisponible = printerStatus === PRINTER_STATUS.UNAVAILABLE;
+  const styles = STATUS_STYLES[printerStatus];
 
   const elapsed = useLiveTimer(printer.currentSession?.startTime);
   const startDate = getStartDate(printer.currentSession?.startTime);
