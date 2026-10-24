@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { CAREERS } from '../config/careers';
-import { subscribeToPrinter, startPrintSession, stopPrintSession } from '../services/printerService';
+import { subscribeToPrinter, startPrintSession, stopPrintSession, PRINT_ERRORS } from '../services/printerService';
 import { PRINTER_STATUS, STOPPED_BY, normalizePrinterStatus } from '../config/status';
 import { 
   Printer, 
@@ -14,6 +14,14 @@ import {
   Loader2 
 } from 'lucide-react';
 
+// Mensajes para el estudiante según el error al iniciar la sesión
+const START_ERROR_MESSAGES = {
+  [PRINT_ERRORS.PRINTER_BUSY]: 'Otra persona acaba de iniciar una impresión en esta máquina. Espera a que se libere o usa otra impresora.',
+  [PRINT_ERRORS.PRINTER_UNAVAILABLE]: 'Esta impresora fue marcada como no disponible.',
+  [PRINT_ERRORS.PRINTER_NOT_FOUND]: 'No se encontró la impresora. Vuelve a escanear el código QR.',
+  DEFAULT: 'No se pudo iniciar la sesión. Revisa tu conexión a internet e intenta nuevamente.',
+};
+
 export default function StudentScanView() {
   const { printerId } = useParams();
   const [searchParams] = useSearchParams();
@@ -25,6 +33,7 @@ export default function StudentScanView() {
   const [career, setCareer] = useState(CAREERS[0] || '');
   const [submitting, setSubmitting] = useState(false);
   const [elapsedTime, setElapsedTime] = useState('00:00:00');
+  const [startError, setStartError] = useState('');
 
   // Suscripción en tiempo real a la impresora específica
   useEffect(() => {
@@ -118,11 +127,12 @@ export default function StudentScanView() {
     if (!studentName.trim()) return;
 
     setSubmitting(true);
+    setStartError('');
     try {
       await startPrintSession(printer, studentName.trim(), career);
     } catch (err) {
       console.error(err);
-      alert('Error al iniciar la sesión de impresión. Intenta nuevamente.');
+      setStartError(START_ERROR_MESSAGES[err.code] || START_ERROR_MESSAGES.DEFAULT);
     } finally {
       setSubmitting(false);
     }
@@ -171,7 +181,10 @@ export default function StudentScanView() {
               required
               placeholder="Ej. Juan Pérez"
               value={studentName}
-              onChange={(e) => setStudentName(e.target.value)}
+              onChange={(e) => {
+                setStudentName(e.target.value);
+                setStartError('');
+              }}
               className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50 focus:bg-white transition-all"
             />
           </div>
@@ -190,6 +203,16 @@ export default function StudentScanView() {
               ))}
             </select>
           </div>
+
+          {startError && (
+            <div
+              role="alert"
+              className="flex items-start gap-2 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium"
+            >
+              <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+              <span>{startError}</span>
+            </div>
+          )}
 
           <button
             type="submit"
