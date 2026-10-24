@@ -4,7 +4,7 @@ Hoja de ruta del proyecto BetaQR: qué está terminado, qué sigue y en qué ord
 
 > **Versión actual:** 0.2.0-Beta  
 > **Última actualización:** octubre 2026
-
+   
 **Leyenda:** ✅ Terminado · 🔄 En curso · ⬜ Pendiente
 
 ---
