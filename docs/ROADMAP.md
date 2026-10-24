@@ -51,12 +51,13 @@ Hoja de ruta del proyecto BetaQR: qué está terminado, qué sigue y en qué ord
 ### Calidad de código
 - [ ] Corregir los 8 errores de ESLint (`npm run lint`), principalmente `setState` dentro de `useEffect`
 - [ ] Reemplazar el cronómetro duplicado de `StudentScanView` por el hook `useLiveTimer`
-- [x] Unificar los valores de `status` en un solo archivo de constantes (hoy conviven `"Ocupado"`, `"Impresión en curso"`, `"En uso"`, `"No disponible"` y `"No Disponible"`)
+- [x] Unificar los valores de `status` en `src/config/status.js`
 - [ ] Eliminar archivos de plantilla que no se usan (`App.css`, `react.svg`, `vite.svg`, `hero.png`)
 
 ### Integridad de datos
 - [x] Usar `runTransaction` al iniciar una sesión, para que dos estudiantes no puedan tomar la misma impresora al mismo tiempo
-- [x] Usar la misma fuente de tiempo para el inicio: hoy `print_sessions.startTime` usa la hora del servidor y `currentSession.startTime` la hora del dispositivo
+- [x] Usar `runTransaction` al detener una sesión, para que no se cierre dos veces (STOP del estudiante y liberación forzada al mismo tiempo)
+- [x] Usar la hora del servidor en ambos `startTime` (`print_sessions` y `currentSession`)
 - [ ] Validar en el formulario que el nombre no esté vacío ni tenga solo espacios
 
 ### Seguridad
