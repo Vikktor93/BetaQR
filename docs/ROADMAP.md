@@ -55,8 +55,8 @@ Hoja de ruta del proyecto BetaQR: qué está terminado, qué sigue y en qué ord
 - [ ] Eliminar archivos de plantilla que no se usan (`App.css`, `react.svg`, `vite.svg`, `hero.png`)
 
 ### Integridad de datos
-- [ ] Usar `runTransaction` al iniciar una sesión, para que dos estudiantes no puedan tomar la misma impresora al mismo tiempo
-- [ ] Usar la misma fuente de tiempo para el inicio: hoy `print_sessions.startTime` usa la hora del servidor y `currentSession.startTime` la hora del dispositivo
+- [x] Usar `runTransaction` al iniciar una sesión, para que dos estudiantes no puedan tomar la misma impresora al mismo tiempo
+- [x] Usar la misma fuente de tiempo para el inicio: hoy `print_sessions.startTime` usa la hora del servidor y `currentSession.startTime` la hora del dispositivo
 - [ ] Validar en el formulario que el nombre no esté vacío ni tenga solo espacios
 
 ### Seguridad
