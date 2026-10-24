@@ -19,6 +19,7 @@ const START_ERROR_MESSAGES = {
   [PRINT_ERRORS.PRINTER_BUSY]: 'Otra persona acaba de iniciar una impresión en esta máquina. Espera a que se libere o usa otra impresora.',
   [PRINT_ERRORS.PRINTER_UNAVAILABLE]: 'Esta impresora fue marcada como no disponible.',
   [PRINT_ERRORS.PRINTER_NOT_FOUND]: 'No se encontró la impresora. Vuelve a escanear el código QR.',
+  EMPTY_NAME: 'Ingresa tu nombre completo.',
   DEFAULT: 'No se pudo iniciar la sesión. Revisa tu conexión a internet e intenta nuevamente.',
 };
 
@@ -124,12 +125,17 @@ export default function StudentScanView() {
   // Manejador: Iniciar Impresión
   const handleStart = async (e) => {
     e.preventDefault();
-    if (!studentName.trim()) return;
 
+    // Quita espacios al inicio y al final, y deja un solo espacio entre palabras
+    const cleanName = studentName.trim().replace(/\s+/g, ' ');
+    if (!cleanName) {
+      setStartError(START_ERROR_MESSAGES.EMPTY_NAME);
+      return;
+    }
     setSubmitting(true);
     setStartError('');
     try {
-      await startPrintSession(printer, studentName.trim(), career);
+      await startPrintSession(printer, cleanName, career);
     } catch (err) {
       console.error(err);
       setStartError(START_ERROR_MESSAGES[err.code] || START_ERROR_MESSAGES.DEFAULT);

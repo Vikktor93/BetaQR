@@ -58,7 +58,7 @@ Hoja de ruta del proyecto BetaQR: qué está terminado, qué sigue y en qué ord
 - [x] Usar `runTransaction` al iniciar una sesión, para que dos estudiantes no puedan tomar la misma impresora al mismo tiempo
 - [x] Usar `runTransaction` al detener una sesión, para que no se cierre dos veces (STOP del estudiante y liberación forzada al mismo tiempo)
 - [x] Usar la hora del servidor en ambos `startTime` (`print_sessions` y `currentSession`)
-- [ ] Validar en el formulario que el nombre no esté vacío ni tenga solo espacios
+- [x] Validar en el formulario que el nombre no esté vacío ni tenga solo espacios
 
 ### Seguridad
 - [ ] Agregar `firestore.rules` y `firebase.json` al repositorio (propuesta en el README)
