@@ -49,7 +49,7 @@ Hoja de ruta del proyecto BetaQR: qué está terminado, qué sigue y en qué ord
 **Objetivo:** dejar una base sólida antes de agregar funciones nuevas.
 
 ### Calidad de código
-- [ ] Corregir los 8 errores de ESLint (`npm run lint`), principalmente `setState` dentro de `useEffect`
+- [x] Corregir los errores de ESLint (`npm run lint`): quedan 6 de 8, principalmente `setState` dentro de `useEffect`
 - [ ] Reemplazar el cronómetro duplicado de `StudentScanView` por el hook `useLiveTimer`
 - [x] Unificar los valores de `status` en `src/config/status.js`
 - [ ] Eliminar archivos de plantilla que no se usan (`App.css`, `react.svg`, `vite.svg`, `hero.png`)
@@ -66,8 +66,8 @@ Hoja de ruta del proyecto BetaQR: qué está terminado, qué sigue y en qué ord
 - [ ] Probar las reglas con el emulador de Firebase antes de publicarlas
 
 ### Gestión de impresoras
-- [ ] Crear impresoras desde el panel (completar el CRUD)
-- [ ] Generar automáticamente el `securityToken` al crear una impresora
+- [x] Crear impresoras desde el panel (completar el CRUD)
+- [x] Generar automáticamente el `securityToken` al crear una impresora
 
 ---
 

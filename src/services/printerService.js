@@ -4,6 +4,7 @@ import {
   updateDoc,
   deleteDoc,
   getDoc,
+  getDocs,
   collection,
   serverTimestamp,
   onSnapshot,
@@ -17,11 +18,11 @@ import {
   normalizePrinterStatus
 } from '../config/status';
 
-// Códigos de error que la interfaz puede mostrar al usuario
 export const PRINT_ERRORS = Object.freeze({
   PRINTER_NOT_FOUND: 'PRINTER_NOT_FOUND',
   PRINTER_BUSY: 'PRINTER_BUSY',
   PRINTER_UNAVAILABLE: 'PRINTER_UNAVAILABLE',
+  PRINTER_ID_TAKEN: 'PRINTER_ID_TAKEN',
 });
 
 const printError = (code) => {
@@ -30,11 +31,10 @@ const printError = (code) => {
   return error;
 };
 
-// Obtiene el ID del documento a partir de un objeto impresora o de un ID directo
+
 const getPrinterId = (printer) =>
   printer?.docId || printer?.id || (typeof printer === 'string' ? printer : null);
 
-// Escucha cambios de la impresora en tiempo real
 export const subscribeToPrinter = (printerId, callback) => {
   if (!printerId) return () => {};
   const printerRef = doc(db, 'printers', printerId);
@@ -54,7 +54,6 @@ export const subscribeToPrinter = (printerId, callback) => {
   );
 };
 
-// Formatea segundos a "HH:MM:SS"
 const formatDuration = (totalSeconds) => {
   const hours = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
   const minutes = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
@@ -62,16 +61,11 @@ const formatDuration = (totalSeconds) => {
   return `${hours}:${minutes}:${seconds}`;
 };
 
-// Inicia sesión de impresión.
-// Usa una transacción: Firestore verifica que la impresora siga disponible y la ocupa
-// en una sola operación. Si dos estudiantes escanean al mismo tiempo, solo uno lo logra.
-// Ambos startTime (sesión e impresora) usan la hora del servidor.
 export const startPrintSession = async (printer, studentName, career) => {
   const printerId = getPrinterId(printer);
   if (!printerId) throw printError(PRINT_ERRORS.PRINTER_NOT_FOUND);
 
   const printerRef = doc(db, 'printers', printerId);
-  // Se genera el ID de la sesión antes de la transacción para guardarlo en la impresora
   const sessionRef = doc(collection(db, 'print_sessions'));
 
   await runTransaction(db, async (transaction) => {
@@ -117,16 +111,13 @@ export const startPrintSession = async (printer, studentName, career) => {
   return sessionRef.id;
 };
 
-// Detiene sesión: libera la impresora y cierra el registro histórico.
-// La transacción evita cerrar dos veces la misma sesión (por ejemplo, si el estudiante
-// presiona STOP mientras el administrador hace una liberación forzada).
+
 export const stopPrintSession = async (printer, detenidoPor = STOPPED_BY.STUDENT) => {
   const printerId = getPrinterId(printer);
   if (!printerId) throw printError(PRINT_ERRORS.PRINTER_NOT_FOUND);
 
   const printerRef = doc(db, 'printers', printerId);
 
-  // 1. Liberar la impresora y marcar el fin de la sesión con la hora del servidor
   const sessionId = await runTransaction(db, async (transaction) => {
     const printerSnap = await transaction.get(printerRef);
 
@@ -137,7 +128,6 @@ export const stopPrintSession = async (printer, detenidoPor = STOPPED_BY.STUDENT
     const activeSessionId = printerSnap.data().currentSession?.sessionId || null;
 
     if (activeSessionId) {
-      // set + merge en lugar de update: no falla si el documento de la sesión ya no existe
       transaction.set(
         doc(db, 'print_sessions', activeSessionId),
         {
@@ -160,12 +150,10 @@ export const stopPrintSession = async (printer, detenidoPor = STOPPED_BY.STUDENT
     return activeSessionId;
   });
 
-  // Si no había sesión activa (ya fue cerrada por otra persona), no hay duración que calcular
   if (!sessionId) {
     return { durationSeconds: 0, durationFormatted: formatDuration(0) };
   }
 
-  // 2. Calcular la duración con los dos tiempos del servidor (startTime y endTime)
   const sessionRef = doc(db, 'print_sessions', sessionId);
   const sessionSnap = await getDoc(sessionRef);
   const { startTime, endTime } = sessionSnap.data() || {};
@@ -181,7 +169,51 @@ export const stopPrintSession = async (printer, detenidoPor = STOPPED_BY.STUDENT
   return { durationSeconds, durationFormatted };
 };
 
-// Actualiza los datos editables de la impresora (Nombre, Modelo, Estado manual)
+export const generateSecurityToken = () => {
+  const bytes = new Uint8Array(8);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+};
+
+export const buildPrinterQrUrl = (printerId, securityToken) => {
+  const url = new URL(`/impresora/${printerId}`, window.location.origin);
+  if (securityToken) url.searchParams.set('token', securityToken);
+  return url.toString();
+};
+
+const getNextPrinterId = async () => {
+  const snapshot = await getDocs(collection(db, 'printers'));
+  const maxNumber = snapshot.docs.reduce((max, d) => {
+    const match = /^printer_(\d+)$/.exec(d.id);
+    return match ? Math.max(max, Number(match[1])) : max;
+  }, 0);
+  return `printer_${String(maxNumber + 1).padStart(2, '0')}`;
+};
+
+
+export const createPrinter = async ({ name, model, status = PRINTER_STATUS.AVAILABLE }) => {
+  const printerId = await getNextPrinterId();
+  const printerRef = doc(db, 'printers', printerId);
+  const securityToken = generateSecurityToken();
+
+  await runTransaction(db, async (transaction) => {
+    const existing = await transaction.get(printerRef);
+    if (existing.exists()) {
+      throw printError(PRINT_ERRORS.PRINTER_ID_TAKEN);
+    }
+    transaction.set(printerRef, {
+      name,
+      model,
+      status,
+      securityToken,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+  });
+
+  return { id: printerId, docId: printerId, name, model, status, securityToken };
+};
+
 export const updatePrinter = async (printerId, updatedData) => {
   const printerRef = doc(db, 'printers', printerId);
   await updateDoc(printerRef, {
@@ -190,7 +222,6 @@ export const updatePrinter = async (printerId, updatedData) => {
   });
 };
 
-// Elimina el equipo de Firestore
 export const deletePrinter = async (printerId) => {
   const printerRef = doc(db, 'printers', printerId);
   await deleteDoc(printerRef);

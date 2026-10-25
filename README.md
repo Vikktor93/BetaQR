@@ -115,6 +115,7 @@ BetaQR/
 │   │       ├── ConfirmModal.jsx     # Modal genérico de confirmación
 │   │       ├── EditPrinterModal.jsx # Edición de nombre, modelo y estado
 │   │       └── PrinterCard.jsx      # Tarjeta de impresora con estado reactivo
+│   │       ├── PrinterFormModal.jsx # Creación y edición de impresoras + enlace del QR
 │   ├── config/
 │   │   ├── careers.js               # Listado oficial de carreras
 │   │   └── firebase.js              # Inicialización de Firebase (Firestore y Auth)

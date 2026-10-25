@@ -4,10 +4,10 @@ import { usePrinters } from '../hooks/usePrinters';
 import { useAuth } from '../context/AuthContext';
 import PrinterCard from '../components/admin/PrinterCard';
 import ConfirmModal from '../components/admin/ConfirmModal';
-import EditPrinterModal from '../components/admin/EditPrinterModal';
-import { stopPrintSession, updatePrinter, deletePrinter } from '../services/printerService';
+import PrinterFormModal from '../components/admin/PrinterFormModal';
+import { stopPrintSession, createPrinter, updatePrinter, deletePrinter } from '../services/printerService';
 import { PRINTER_STATUS, STOPPED_BY, normalizePrinterStatus } from '../config/status';
-import { LayoutGrid, Loader2, AlertTriangle, LogOut } from 'lucide-react';
+import { LayoutGrid, Loader2, AlertTriangle, LogOut, Plus } from 'lucide-react';
 
 export default function AdminDashboard() {
   const { printers, loading, error } = usePrinters();
@@ -17,7 +17,6 @@ export default function AdminDashboard() {
   const [expandedId, setExpandedId] = useState(null);
   const [forcingId, setForcingId] = useState(null);
 
-  // Estados de modales
   const [confirmModalState, setConfirmModalState] = useState({
     isOpen: false,
     title: '',
@@ -27,20 +26,19 @@ export default function AdminDashboard() {
     action: null,
   });
 
-  const [editModalState, setEditModalState] = useState({
+  const [formModalState, setFormModalState] = useState({
     isOpen: false,
     printer: null,
   });
   const [isUpdating, setIsUpdating] = useState(false);
+  const [formError, setFormError] = useState('');
 
-  // Contadores del resumen (misma normalización que usa PrinterCard)
   const countByStatus = (status) =>
     printers.filter((p) => normalizePrinterStatus(p.status) === status).length;
   const disponibles = countByStatus(PRINTER_STATUS.AVAILABLE);
   const ocupadas = countByStatus(PRINTER_STATUS.BUSY);
   const noDisponibles = countByStatus(PRINTER_STATUS.UNAVAILABLE);
 
-  // Disponible = verde · En uso = ámbar · No disponible = rojo
   const summaryChips = [
     {
       label: 'disponibles',
@@ -75,7 +73,6 @@ export default function AdminDashboard() {
     }
   };
 
-  // 1. Finalizar impresión con ConfirmModal
   const handleForceStopClick = (printer) => {
     setConfirmModalState({
       isOpen: true,
@@ -98,7 +95,6 @@ export default function AdminDashboard() {
     });
   };
 
-  // 2. Eliminar impresora con ConfirmModal
   const handleDeleteClick = (printer) => {
     setConfirmModalState({
       isOpen: true,
@@ -119,23 +115,36 @@ export default function AdminDashboard() {
     });
   };
 
-  // 3. Abrir modal de edición
-  const handleEditClick = (printer) => {
-    setEditModalState({
-      isOpen: true,
-      printer,
-    });
+  const handleCreateClick = () => {
+    setFormError('');
+    setFormModalState({ isOpen: true, printer: null });
   };
 
-  // 4. Guardar cambios de edición
-  const handleSaveEdit = async (updatedData) => {
-    const printerId = editModalState.printer.docId || editModalState.printer.id;
+  const handleEditClick = (printer) => {
+    setFormError('');
+    setFormModalState({ isOpen: true, printer });
+  };
+
+  const closeFormModal = () => {
+    setFormError('');
+    setFormModalState({ isOpen: false, printer: null });
+  };
+
+  const handleSavePrinter = async (data) => {
+    const editing = formModalState.printer;
     setIsUpdating(true);
+    setFormError('');
     try {
-      await updatePrinter(printerId, updatedData);
-      setEditModalState({ isOpen: false, printer: null });
+      if (editing) {
+        await updatePrinter(editing.docId || editing.id, data);
+        closeFormModal();
+      } else {
+        const newPrinter = await createPrinter(data);
+        setFormModalState({ isOpen: true, printer: newPrinter });
+      }
     } catch (err) {
-      console.error('Error al actualizar impresora:', err);
+      console.error('Error al guardar impresora:', err);
+      setFormError('No se pudo guardar la impresora. Intenta nuevamente.');
     } finally {
       setIsUpdating(false);
     }
@@ -191,7 +200,7 @@ export default function AdminDashboard() {
             </button>
           </div>
 
-          <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-slate-100">
+          <div className="flex flex-wrap items-center gap-2 mt-4 pt-4 border-t border-slate-100">
             {summaryChips.map((chip) => (
               <span
                 key={chip.label}
@@ -201,13 +210,28 @@ export default function AdminDashboard() {
                 {chip.count} {chip.label}
               </span>
             ))}
+
+            <button
+              onClick={handleCreateClick}
+              className="ml-auto inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 active:scale-[0.98] rounded-xl shadow-sm transition-all cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              Agregar impresora
+            </button>
           </div>
         </div>
       </header>
 
       {printers.length === 0 ? (
         <div className="max-w-2xl mx-auto bg-white p-6 rounded-2xl shadow-xs border border-slate-200 text-center text-sm text-slate-500">
-          Aún no hay impresoras registradas en el laboratorio.
+          <p>Aún no hay impresoras registradas en el laboratorio.</p>
+          <button
+            onClick={handleCreateClick}
+            className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-sm transition-all cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            Agregar la primera impresora
+          </button>
         </div>
       ) : (
         <div className="max-w-2xl mx-auto flex flex-col gap-3">
@@ -240,12 +264,15 @@ export default function AdminDashboard() {
         onCancel={() => setConfirmModalState((prev) => ({ ...prev, isOpen: false }))}
       />
 
-      <EditPrinterModal
-        isOpen={editModalState.isOpen}
-        printer={editModalState.printer}
-        onClose={() => setEditModalState({ isOpen: false, printer: null })}
-        onSave={handleSaveEdit}
+      {/* La key reinicia el formulario al cambiar entre crear y editar otra impresora */}
+      <PrinterFormModal
+        key={formModalState.printer?.docId || formModalState.printer?.id || 'nueva'}
+        isOpen={formModalState.isOpen}
+        printer={formModalState.printer}
+        onClose={closeFormModal}
+        onSave={handleSavePrinter}
         isLoading={isUpdating}
+        errorMessage={formError}
       />
     </main>
   );
