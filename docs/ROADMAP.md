@@ -4,7 +4,7 @@ Hoja de ruta del proyecto BetaQR: qué está terminado, qué sigue y en qué ord
 
 > **Versión actual:** 0.2.0-Beta  
 > **Última actualización:** octubre 2026
-
+   
 **Leyenda:** ✅ Terminado · 🔄 En curso · ⬜ Pendiente
 
 ---
@@ -49,15 +49,16 @@ Hoja de ruta del proyecto BetaQR: qué está terminado, qué sigue y en qué ord
 **Objetivo:** dejar una base sólida antes de agregar funciones nuevas.
 
 ### Calidad de código
-- [ ] Corregir los 8 errores de ESLint (`npm run lint`), principalmente `setState` dentro de `useEffect`
+- [x] Corregir los errores de ESLint (`npm run lint`): quedan 6 de 8, principalmente `setState` dentro de `useEffect`
 - [ ] Reemplazar el cronómetro duplicado de `StudentScanView` por el hook `useLiveTimer`
-- [x] Unificar los valores de `status` en un solo archivo de constantes (hoy conviven `"Ocupado"`, `"Impresión en curso"`, `"En uso"`, `"No disponible"` y `"No Disponible"`)
+- [x] Unificar los valores de `status` en `src/config/status.js`
 - [ ] Eliminar archivos de plantilla que no se usan (`App.css`, `react.svg`, `vite.svg`, `hero.png`)
 
 ### Integridad de datos
-- [ ] Usar `runTransaction` al iniciar una sesión, para que dos estudiantes no puedan tomar la misma impresora al mismo tiempo
-- [ ] Usar la misma fuente de tiempo para el inicio: hoy `print_sessions.startTime` usa la hora del servidor y `currentSession.startTime` la hora del dispositivo
-- [ ] Validar en el formulario que el nombre no esté vacío ni tenga solo espacios
+- [x] Usar `runTransaction` al iniciar una sesión, para que dos estudiantes no puedan tomar la misma impresora al mismo tiempo
+- [x] Usar `runTransaction` al detener una sesión, para que no se cierre dos veces (STOP del estudiante y liberación forzada al mismo tiempo)
+- [x] Usar la hora del servidor en ambos `startTime` (`print_sessions` y `currentSession`)
+- [x] Validar en el formulario que el nombre no esté vacío ni tenga solo espacios
 
 ### Seguridad
 - [ ] Agregar `firestore.rules` y `firebase.json` al repositorio (propuesta en el README)
@@ -65,8 +66,8 @@ Hoja de ruta del proyecto BetaQR: qué está terminado, qué sigue y en qué ord
 - [ ] Probar las reglas con el emulador de Firebase antes de publicarlas
 
 ### Gestión de impresoras
-- [ ] Crear impresoras desde el panel (completar el CRUD)
-- [ ] Generar automáticamente el `securityToken` al crear una impresora
+- [x] Crear impresoras desde el panel (completar el CRUD)
+- [x] Generar automáticamente el `securityToken` al crear una impresora
 
 ---
 
