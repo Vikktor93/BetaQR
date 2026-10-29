@@ -5,15 +5,17 @@ import { useAuth } from '../context/AuthContext';
 import PrinterCard from '../components/admin/PrinterCard';
 import ConfirmModal from '../components/admin/ConfirmModal';
 import PrinterFormModal from '../components/admin/PrinterFormModal';
+import SessionsHistory from '../components/admin/SessionsHistory';
 import { stopPrintSession, createPrinter, updatePrinter, deletePrinter } from '../services/printerService';
 import { PRINTER_STATUS, STOPPED_BY, normalizePrinterStatus } from '../config/status';
-import { LayoutGrid, Loader2, AlertTriangle, LogOut, Plus } from 'lucide-react';
+import { LayoutGrid, Loader2, AlertTriangle, LogOut, Plus, LayoutDashboard, History } from 'lucide-react';
 
 export default function AdminDashboard() {
   const { printers, loading, error } = usePrinters();
   const { logout } = useAuth();
   const navigate = useNavigate();
 
+  const [activeTab, setActiveTab] = useState('printers'); // 'printers' | 'history'
   const [expandedId, setExpandedId] = useState(null);
   const [forcingId, setForcingId] = useState(null);
 
@@ -175,7 +177,7 @@ export default function AdminDashboard() {
 
   return (
     <main className="min-h-screen bg-slate-50 p-4 md:p-8">
-      <header className="max-w-2xl mx-auto mb-6">
+      <header className="max-w-4xl mx-auto mb-6">
         <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-4 sm:p-5">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3">
@@ -200,56 +202,93 @@ export default function AdminDashboard() {
             </button>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 mt-4 pt-4 border-t border-slate-100">
-            {summaryChips.map((chip) => (
-              <span
-                key={chip.label}
-                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border ${chip.style}`}
-              >
-                <span className={`w-1.5 h-1.5 rounded-full ${chip.dot}`}></span>
-                {chip.count} {chip.label}
-              </span>
-            ))}
+          {/* Selector de pestañas */}
+          <div className="flex items-center gap-2 border-b border-slate-200 mt-5">
+            <button
+              onClick={() => setActiveTab('printers')}
+              className={`inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold border-b-2 transition-all cursor-pointer ${
+                activeTab === 'printers'
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              <LayoutDashboard className="w-4 h-4" />
+              Monitoreo en Vivo
+            </button>
 
             <button
-              onClick={handleCreateClick}
-              className="ml-auto inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 active:scale-[0.98] rounded-xl shadow-sm transition-all cursor-pointer"
+              onClick={() => setActiveTab('history')}
+              className={`inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold border-b-2 transition-all cursor-pointer ${
+                activeTab === 'history'
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-slate-500 hover:text-slate-700'
+              }`}
             >
-              <Plus className="w-4 h-4" />
-              Agregar impresora
+              <History className="w-4 h-4" />
+              Historial de Sesiones
             </button>
           </div>
+
+          {/* Chips de resumen y botón de agregar (solo en la pestaña de monitoreo) */}
+          {activeTab === 'printers' && (
+            <div className="flex flex-wrap items-center gap-2 mt-4 pt-2">
+              {summaryChips.map((chip) => (
+                <span
+                  key={chip.label}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border ${chip.style}`}
+                >
+                  <span className={`w-1.5 h-1.5 rounded-full ${chip.dot}`}></span>
+                  {chip.count} {chip.label}
+                </span>
+              ))}
+
+              <button
+                onClick={handleCreateClick}
+                className="ml-auto inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 active:scale-[0.98] rounded-xl shadow-sm transition-all cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                Agregar impresora
+              </button>
+            </div>
+          )}
         </div>
       </header>
 
-      {printers.length === 0 ? (
-        <div className="max-w-2xl mx-auto bg-white p-6 rounded-2xl shadow-xs border border-slate-200 text-center text-sm text-slate-500">
-          <p>Aún no hay impresoras registradas en el laboratorio.</p>
-          <button
-            onClick={handleCreateClick}
-            className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-sm transition-all cursor-pointer"
-          >
-            <Plus className="w-4 h-4" />
-            Agregar la primera impresora
-          </button>
-        </div>
+      {/* Contenido condicional según la pestaña seleccionada */}
+      {activeTab === 'printers' ? (
+        printers.length === 0 ? (
+          <div className="max-w-4xl mx-auto bg-white p-6 rounded-2xl shadow-xs border border-slate-200 text-center text-sm text-slate-500">
+            <p>Aún no hay impresoras registradas en el laboratorio.</p>
+            <button
+              onClick={handleCreateClick}
+              className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-sm transition-all cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              Agregar la primera impresora
+            </button>
+          </div>
+        ) : (
+          <div className="max-w-4xl mx-auto flex flex-col gap-3">
+            {printers.map((printer) => {
+              const pId = printer.docId || printer.id;
+              return (
+                <PrinterCard
+                  key={pId}
+                  printer={printer}
+                  isExpanded={expandedId === pId}
+                  onToggle={() => handleToggle(pId)}
+                  onForceStop={handleForceStopClick}
+                  onEdit={handleEditClick}
+                  onDelete={handleDeleteClick}
+                  isForcing={forcingId === pId}
+                />
+              );
+            })}
+          </div>
+        )
       ) : (
-        <div className="max-w-2xl mx-auto flex flex-col gap-3">
-          {printers.map((printer) => {
-            const pId = printer.docId || printer.id;
-            return (
-              <PrinterCard
-                key={pId}
-                printer={printer}
-                isExpanded={expandedId === pId}
-                onToggle={() => handleToggle(pId)}
-                onForceStop={handleForceStopClick}
-                onEdit={handleEditClick}
-                onDelete={handleDeleteClick}
-                isForcing={forcingId === pId}
-              />
-            );
-          })}
+        <div className="max-w-4xl mx-auto">
+          <SessionsHistory />
         </div>
       )}
 
@@ -264,7 +303,6 @@ export default function AdminDashboard() {
         onCancel={() => setConfirmModalState((prev) => ({ ...prev, isOpen: false }))}
       />
 
-      {/* La key reinicia el formulario al cambiar entre crear y editar otra impresora */}
       <PrinterFormModal
         key={formModalState.printer?.docId || formModalState.printer?.id || 'nueva'}
         isOpen={formModalState.isOpen}
